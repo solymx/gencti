@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTI 情資報告生成器</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+        body {
+            font-family: 'Inter', 'Microsoft JhengHei', sans-serif;
+            background-color: #f8fafc;
+        }
+        .form-input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+            ring: 2px;
+            ring-color: #bfdbfe;
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header -->
+        <div class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-slate-800 mb-2">情資報告標頭生成工具</h1>
+            <p class="text-slate-500">輸入情資內容，快速產出符合格式的 Markdown 表格</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Left Side: Input Form -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
+                <div class="flex items-center gap-2 mb-4 text-blue-600 font-semibold">
+                    <i data-lucide="edit-3" class="w-5 h-5"></i>
+                    <h2>資料輸入欄位</h2>
+                </div>
+
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">報告編號</label>
+                            <input type="text" id="reportId" class="form-input" placeholder="NICS-260301-02">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">報告類型</label>
+                            <input type="text" id="reportType" class="form-input" value="Flash Report">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">發布日期</label>
+                            <input type="text" id="publishDate" class="form-input" placeholder="2026.03.03">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">信心等級</label>
+                            <select id="confidence" class="form-input">
+                                <option value="高">高</option>
+                                <option value="中" selected>中</option>
+                                <option value="低">低</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">威脅等級</label>
+                            <select id="threatLevel" class="form-input">
+                                <option value="高" selected>高</option>
+                                <option value="中">中</option>
+                                <option value="低">低</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">受影響產業</label>
+                            <input type="text" id="industry" class="form-input" placeholder="能源、科技業">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">受害地區</label>
+                            <input type="text" id="region" class="form-input" value="台灣">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">駭客組織</label>
+                        <input type="text" id="actor" class="form-input" value="-">
+                    </div>
+
+                    <div class="p-4 bg-slate-50 rounded-lg space-y-4 border border-slate-100">
+                        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">惡意程式與加密資訊</p>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">惡意程式名稱</label>
+                            <input type="text" id="malwareName" class="form-input" placeholder="COLDLOCK Ransomware">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">使用的演算法</label>
+                            <input type="text" id="algorithm" class="form-input" placeholder="RSA 2048、AES">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">副檔名</label>
+                                <input type="text" id="extension" class="form-input" placeholder="`.locked`">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Ransom note</label>
+                                <input type="text" id="ransomNote" class="form-input" value="-">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">初始入侵方式</label>
+                            <input type="text" id="initialAccess" class="form-input" placeholder="釣魚郵件">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">TLP 標籤</label>
+                            <select id="tlp" class="form-input">
+                                <option value="White">White</option>
+                                <option value="Green" selected>Green</option>
+                                <option value="Amber">Amber</option>
+                                <option value="Red">Red</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Preview & Output -->
+            <div class="flex flex-col gap-6">
+                <!-- Preview -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 flex-1">
+                    <div class="flex justify-between items-center mb-4">
+                        <div class="flex items-center gap-2 text-green-600 font-semibold">
+                            <i data-lucide="eye" class="w-5 h-5"></i>
+                            <h2>Markdown 預覽</h2>
+                        </div>
+                        <button onclick="copyToClipboard()" class="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                            複製 Markdown
+                        </button>
+                    </div>
+
+                    <div id="mdContainer" class="prose prose-slate max-w-none overflow-x-auto text-sm border p-4 rounded bg-white">
+                        <!-- Table will be injected here -->
+                    </div>
+                </div>
+
+                <!-- raw text area for debugging or manual copy -->
+                <textarea id="rawMarkdown" class="hidden"></textarea>
+
+                <!-- Feedback Message -->
+                <div id="copyToast" class="fixed bottom-4 right-4 bg-green-600 text-white px-6 py-3 rounded-full shadow-lg transform translate-y-20 opacity-0 transition-all duration-300">
+                    已複製到剪貼簿！
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        const fields = [
+            { id: 'reportId', label: '報告編號' },
+            { id: 'reportType', label: '報告類型' },
+            { id: 'publishDate', label: '發布日期' },
+            { id: 'confidence', label: '信心等級' },
+            { id: 'threatLevel', label: '威脅等級' },
+            { id: 'industry', label: '受影響產業' },
+            { id: 'region', label: '受害地區' },
+            { id: 'actor', label: '駭客組織' },
+            { id: 'malwareName', label: '惡意程式名稱' },
+            { id: 'algorithm', label: '勒索軟體使用的演算法' },
+            { id: 'extension', label: '加密後檔案副檔名' },
+            { id: 'ransomNote', label: 'Ransom note' },
+            { id: 'initialAccess', label: '初始入侵方式' },
+            { id: 'tlp', label: 'TLP' }
+        ];
+
+        function updateGenerator() {
+            let markdown = "| 欄位 | 內容 |\n|------|------|\n";
+            let htmlTable = `
+                <table class="min-w-full border-collapse border border-slate-300">
+                    <thead class="bg-slate-100">
+                        <tr>
+                            <th class="border border-slate-300 px-4 py-2 text-left">欄位</th>
+                            <th class="border border-slate-300 px-4 py-2 text-left">內容</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            fields.forEach(field => {
+                const element = document.getElementById(field.id);
+                const value = element ? (element.value || '-') : '-';
+                
+                markdown += `| ${field.label} | ${value} |\n`;
+                htmlTable += `
+                    <tr>
+                        <td class="border border-slate-300 px-4 py-2 font-semibold bg-slate-50">${field.label}</td>
+                        <td class="border border-slate-300 px-4 py-2">${value}</td>
+                    </tr>
+                `;
+            });
+
+            htmlTable += `</tbody></table>`;
+            
+            document.getElementById('mdContainer').innerHTML = htmlTable;
+            document.getElementById('rawMarkdown').value = markdown;
+        }
+
+        function copyToClipboard() {
+            const rawText = document.getElementById('rawMarkdown');
+            rawText.style.display = 'block';
+            rawText.select();
+            document.execCommand('copy');
+            rawText.style.display = 'none';
+
+            // Show Toast
+            const toast = document.getElementById('copyToast');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2000);
+        }
+
+        // Add event listeners to all inputs
+        fields.forEach(field => {
+            const el = document.getElementById(field.id);
+            if (el) {
+                el.addEventListener('input', updateGenerator);
+            }
+        });
+
+        // Initialize with current date if empty
+        window.onload = () => {
+            const dateInput = document.getElementById('publishDate');
+            if (!dateInput.value) {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                dateInput.value = `${year}.${month}.${day}`;
+            }
+            updateGenerator();
+        };
+    </script>
+</body>
+</html>
