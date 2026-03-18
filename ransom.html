@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CTI 情資報告全方位生成器 - 專業版</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&family=JetBrains+Mono:wght@500&display=swap');
+        body { font-family: 'Inter', 'Microsoft JhengHei', sans-serif; background-color: #f1f5f9; }
+        .form-input { width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 0.375rem; font-size: 0.875rem; }
+        .form-input:focus { outline: none; border-color: #3b82f6; ring: 2px; ring-color: #bfdbfe; }
+        .tab-btn { padding: 0.75rem 1rem; font-size: 0.875rem; font-weight: 500; color: #64748b; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab-btn.active { border-bottom: 2px solid #3b82f6; color: #3b82f6; }
+        .section-card { background: white; padding: 1.5rem; border-radius: 0.75rem; border: 1px solid #e2e8f0; margin-bottom: 1.5rem; }
+        .dynamic-row { display: grid; grid-template-columns: 1fr 1fr 2fr 40px; gap: 0.5rem; margin-bottom: 0.5rem; align-items: center; }
+        
+        /* 封面預覽專用樣式 */
+        .preview-cover {
+            border: 1px solid #e2e8f0;
+            background: white;
+            padding: 2rem;
+            text-align: center;
+            position: relative;
+            margin-bottom: 2rem;
+        }
+        .preview-cover-top {
+            position: absolute; top: 0; left: 0; width: 100%; height: 4px;
+            background: linear-gradient(90deg, #003366 0%, #d90429 100%);
+        }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-7xl mx-auto">
+        <!-- 頂部標題與操作按鈕 -->
+        <div class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-slate-800 flex items-center gap-3">
+                    <i data-lucide="shield-check" class="text-blue-600 w-8 h-8"></i>
+                    CTI 專業報告生成器 3.0
+                </h1>
+                <p class="text-slate-500">支援勒索軟體封面、技術分析表格與 IOCs 自動化產出</p>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="copyToClipboard()" class="flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white px-6 py-2.5 rounded-lg font-semibold shadow-sm transition-all active:scale-95">
+                    <i data-lucide="copy" class="w-5 h-5"></i>
+                    複製完整 Markdown
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <!-- 左側：編輯區域 -->
+            <div class="lg:col-span-7">
+                <!-- 導覽頁籤 -->
+                <div class="flex border-b border-slate-200 mb-6 bg-white rounded-t-lg px-4 overflow-x-auto">
+                    <button onclick="switchMainTab('cover')" id="btn-cover" class="tab-btn active whitespace-nowrap">0. 封面設定</button>
+                    <button onclick="switchMainTab('header')" id="btn-header" class="tab-btn whitespace-nowrap">1. 標頭資訊</button>
+                    <button onclick="switchMainTab('content')" id="btn-content" class="tab-btn whitespace-nowrap">2. 摘要與分析</button>
+                    <button onclick="switchMainTab('iocs')" id="btn-iocs" class="tab-btn whitespace-nowrap">3. IOCs & ATT&CK</button>
+                    <button onclick="switchMainTab('ref')" id="btn-ref" class="tab-btn whitespace-nowrap">4. 參考連結</button>
+                </div>
+
+                <!-- 頁籤 0: 封面設定 -->
+                <div id="panel-cover" class="main-panel">
+                    <div class="section-card">
+                        <div class="flex items-center gap-2 mb-4 text-slate-800 font-bold border-b pb-2">
+                            <i data-lucide="image" class="w-5 h-5"></i>
+                            報告封面配置
+                        </div>
+                        <div class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">主標題 (例如 TWCERT/CC)</label>
+                                <input type="text" id="coverMainTitle" oninput="updateAll()" class="form-input" value="TWCERT/CC">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">副標題 (例如 Threat Intelligence Report)</label>
+                                <input type="text" id="coverSubTitle" oninput="updateAll()" class="form-input" value="Threat Intelligence Report ⚡">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">報告名稱 (大標題)</label>
+                                <input type="text" id="reportTitle" oninput="updateAll()" class="form-input" placeholder="例如: COLDLOCK 勒索軟體針對台灣攻擊分析">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 頁籤 1: 標頭資訊 -->
+                <div id="panel-header" class="main-panel hidden">
+                    <div class="section-card">
+                        <div class="flex items-center gap-2 mb-4 text-slate-800 font-bold border-b pb-2">
+                            <i data-lucide="layout" class="w-5 h-5"></i>
+                            報告格式切換
+                        </div>
+                        <div class="flex gap-4 mb-6">
+                            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                                <input type="radio" name="reportMode" value="ransomware" checked onchange="handleModeChange(this.value)"> 勒索軟體 (14欄位)
+                            </label>
+                            <label class="flex items-center gap-2 cursor-pointer text-sm font-medium">
+                                <input type="radio" name="reportMode" value="general" onchange="handleModeChange(this.value)"> 一般情資 (10欄位)
+                            </label>
+                        </div>
+                        <div id="headerFields" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <!-- JS 動態生成 -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 頁籤 2: 內容分析 -->
+                <div id="panel-content" class="main-panel hidden">
+                    <div class="section-card">
+                        <div class="flex items-center gap-2 mb-4 text-slate-800 font-bold border-b pb-2">
+                            <i data-lucide="file-text" class="w-5 h-5"></i>
+                            本文分析
+                        </div>
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">報告摘要 (Abstract)</label>
+                        <textarea id="abstract" class="form-input h-32 mb-4" placeholder="請輸入摘要..."></textarea>
+
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-slate-500 uppercase">攻擊流程表格 (Attack Flow)</label>
+                            <button onclick="addRow('flow')" class="text-[10px] bg-slate-100 px-2 py-1 rounded border">＋ 新增階段</button>
+                        </div>
+                        <div id="flowContainer" class="mb-6"></div>
+
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">技術分析 (Technical Analysis)</label>
+                        <textarea id="analysis" class="form-input h-64 mb-4" placeholder="詳細分析內容..."></textarea>
+                        
+                        <label class="block text-xs font-bold text-slate-500 mb-1 uppercase">偵測規則 (Detection Rules)</label>
+                        <textarea id="detectionRules" class="form-input font-mono text-xs h-32" placeholder="YARA/Snort..."></textarea>
+                    </div>
+                </div>
+
+                <!-- 頁籤 3: IOCs & ATT&CK -->
+                <div id="panel-iocs" class="main-panel hidden">
+                    <div class="section-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-sm font-bold text-slate-700">檔案 IOC 列表</label>
+                            <button onclick="addRow('fileIoc')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded">＋ 新增檔案</button>
+                        </div>
+                        <div id="fileIocContainer"></div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-sm font-bold text-slate-700">網路指標 (IOCs)</label>
+                            <button onclick="addRow('netIoc')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded">＋ 新增指標</button>
+                        </div>
+                        <div id="netIocContainer"></div>
+                    </div>
+
+                    <div class="section-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-sm font-bold text-slate-700">MITRE ATT&CK</label>
+                            <button onclick="addRow('attck')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded">＋ 新增技術</button>
+                        </div>
+                        <div id="attckContainer"></div>
+                    </div>
+                </div>
+
+                <!-- 頁籤 4: 參考資料 -->
+                <div id="panel-ref" class="main-panel hidden">
+                    <div class="section-card">
+                        <div class="flex justify-between items-center mb-4">
+                            <label class="text-sm font-bold text-slate-700">參考連結</label>
+                            <button onclick="addRow('refLink')" class="text-xs bg-slate-800 text-white px-3 py-1 rounded">＋ 新增連結</button>
+                        </div>
+                        <div id="refLinkContainer"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右側：預覽區域 -->
+            <div class="lg:col-span-5">
+                <div class="bg-white rounded-xl shadow-lg border border-slate-200 sticky top-8 flex flex-col h-[calc(100vh-120px)]">
+                    <div class="p-4 border-b flex items-center justify-between bg-slate-50 rounded-t-xl">
+                        <div class="flex items-center gap-2 text-slate-700 font-bold">
+                            <i data-lucide="scroll-text" class="w-5 h-5 text-blue-600"></i>
+                            報告即時預覽
+                        </div>
+                    </div>
+                    <div id="fullPreview" class="p-6 overflow-y-auto flex-1 prose prose-slate prose-sm max-w-none">
+                        <!-- Preview Injected Here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="copyToast" class="fixed bottom-8 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-8 py-3 rounded-full shadow-2xl opacity-0 transition-all duration-300 pointer-events-none z-50">
+        已複製到剪貼簿！
+    </div>
+
+    <script>
+        let currentMode = 'ransomware';
+        let flows = [
+            { stage: '1', action: '檢查檔案修改時間', desc: '用 2018-01-01 作為分界' },
+            { stage: '2', action: '比對副檔名', desc: '確定是否為目標檔案' }
+        ];
+        let fileIocs = [{ name: 'COLDLOCK.exe', desc: '勒索軟體主程式', hash: 'c5108344e8a6da617af1c4a7fd8924a64130b4c86fa0f6d6225bb75534a80a35' }];
+        let netIocs = [{ value: 'api[.]skycloudcenter[.]com' }];
+        let attcks = [{ id: 'T1486', name: 'Data Encrypted for Impact' }];
+        let refLinks = [{ url: 'https://www.virustotal.com/gui/collection/report--20-00008620' }];
+
+        const headerConfigs = {
+            ransomware: [
+                { id: 'reportId', label: '報告編號', value: 'NICS-260301-02' },
+                { id: 'reportType', label: '報告類型', value: 'Flash Report' },
+                { id: 'publishDate', label: '發布日期', value: '' },
+                { id: 'confidence', label: '信心等級', type: 'select', options: ['高', '中', '低'], value: '中' },
+                { id: 'threatLevel', label: '威脅等級', type: 'select', options: ['高', '中', '低'], value: '高' },
+                { id: 'industry', label: '受影響產業', value: '能源、科技業' },
+                { id: 'region', label: '受害地區', value: '台灣' },
+                { id: 'actor', label: '駭客組織', value: '-' },
+                { id: 'malwareName', label: '惡意程式名稱', value: 'COLDLOCK Ransomware' },
+                { id: 'algorithm', label: '使用演算法', value: 'RSA 2048、AES' },
+                { id: 'extension', label: '檔案副檔名', value: '`.locked`' },
+                { id: 'ransomNote', label: 'Ransom note', value: '-' },
+                { id: 'initialAccess', label: '初始入侵方式', value: '釣魚郵件' },
+                { id: 'tlp', label: 'TLP', type: 'select', options: ['White', 'Green', 'Amber', 'Red'], value: 'Green' }
+            ],
+            general: [
+                { id: 'reportId', label: '報告編號', value: 'NICS-260301-01' },
+                { id: 'reportType', label: '報告類型', value: 'Flash Report' },
+                { id: 'publishDate', label: '發布日期', value: '' },
+                { id: 'confidence', label: '信心等級', type: 'select', options: ['高', '中', '低'], value: '中' },
+                { id: 'threatLevel', label: '威脅等級', type: 'select', options: ['高', '中', '低'], value: '高' },
+                { id: 'industry', label: '受影響產業', value: '金融、科技業' },
+                { id: 'region', label: '受害地區', value: '台灣' },
+                { id: 'actor', label: '駭客組織', value: 'Lotus Blossom' },
+                { id: 'malwareName', label: '惡意程式名稱', value: 'Chrysalis' },
+                { id: 'tlp', label: 'TLP', type: 'select', options: ['White', 'Green', 'Amber', 'Red'], value: 'Green' }
+            ]
+        };
+
+        function switchMainTab(tab) {
+            document.querySelectorAll('.main-panel').forEach(p => p.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(`panel-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).classList.add('active');
+        }
+
+        function handleModeChange(mode) {
+            currentMode = mode;
+            renderHeaderFields();
+        }
+
+        function renderHeaderFields() {
+            const container = document.getElementById('headerFields');
+            const fields = headerConfigs[currentMode];
+            container.innerHTML = fields.map(f => `
+                <div>
+                    <label class="block text-[10px] font-bold text-slate-400 mb-1 uppercase">${f.label}</label>
+                    ${f.type === 'select' ? `
+                        <select id="h-${f.id}" oninput="updateAll()" class="form-input">
+                            ${f.options.map(opt => `<option value="${opt}" ${f.value === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                        </select>
+                    ` : `
+                        <input type="text" id="h-${f.id}" oninput="updateAll()" class="form-input" value="${f.value}">
+                    `}
+                </div>
+            `).join('');
+            updateAll();
+        }
+
+        function addRow(type) {
+            if (type === 'flow') flows.push({ stage: '', action: '', desc: '' });
+            if (type === 'fileIoc') fileIocs.push({ name: '', desc: '', hash: '' });
+            if (type === 'netIoc') netIocs.push({ value: '' });
+            if (type === 'attck') attcks.push({ id: '', name: '' });
+            if (type === 'refLink') refLinks.push({ url: '' });
+            renderDynamicLists();
+            updateAll();
+        }
+
+        function removeRow(type, index) {
+            if (type === 'flow') flows.splice(index, 1);
+            if (type === 'fileIoc') fileIocs.splice(index, 1);
+            if (type === 'netIoc') netIocs.splice(index, 1);
+            if (type === 'attck') attcks.splice(index, 1);
+            if (type === 'refLink') refLinks.splice(index, 1);
+            renderDynamicLists();
+            updateAll();
+        }
+
+        function updateRowValue(type, index, field, value) {
+            if (type === 'flow') flows[index][field] = value;
+            if (type === 'fileIoc') fileIocs[index][field] = value;
+            if (type === 'netIoc') netIocs[index][field] = value;
+            if (type === 'attck') attcks[index][field] = value;
+            if (type === 'refLink') refLinks[index][field] = value;
+            updateAll();
+        }
+
+        function renderDynamicLists() {
+            // Flow Table
+            document.getElementById('flowContainer').innerHTML = flows.map((item, i) => `
+                <div class="grid grid-cols-4 gap-2 mb-2">
+                    <input type="text" class="form-input text-xs" placeholder="階段" value="${item.stage}" oninput="updateRowValue('flow', ${i}, 'stage', this.value)">
+                    <input type="text" class="form-input text-xs" placeholder="行為" value="${item.action}" oninput="updateRowValue('flow', ${i}, 'action', this.value)">
+                    <input type="text" class="form-input text-xs col-span-1" placeholder="說明" value="${item.desc}" oninput="updateRowValue('flow', ${i}, 'desc', this.value)">
+                    <button onclick="removeRow('flow', ${i})" class="text-red-400">✕</button>
+                </div>
+            `).join('');
+
+            // IOCs
+            document.getElementById('fileIocContainer').innerHTML = fileIocs.map((item, i) => `
+                <div class="dynamic-row">
+                    <input type="text" class="form-input text-[11px]" placeholder="檔名" value="${item.name}" oninput="updateRowValue('fileIoc', ${i}, 'name', this.value)">
+                    <input type="text" class="form-input text-[11px]" placeholder="描述" value="${item.desc}" oninput="updateRowValue('fileIoc', ${i}, 'desc', this.value)">
+                    <input type="text" class="form-input text-[11px] font-mono" placeholder="SHA256" value="${item.hash}" oninput="updateRowValue('fileIoc', ${i}, 'hash', this.value)">
+                    <button onclick="removeRow('fileIoc', ${i})" class="text-red-300">✕</button>
+                </div>
+            `).join('');
+
+            document.getElementById('netIocContainer').innerHTML = netIocs.map((item, i) => `
+                <div class="flex gap-2 mb-2">
+                    <input type="text" class="form-input text-xs" placeholder="Indicator" value="${item.value}" oninput="updateRowValue('netIoc', ${i}, 'value', this.value)">
+                    <button onclick="removeRow('netIoc', ${i})" class="text-red-300 px-2">✕</button>
+                </div>
+            `).join('');
+
+            document.getElementById('attckContainer').innerHTML = attcks.map((item, i) => `
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <input type="text" class="form-input text-xs" placeholder="ID" value="${item.id}" oninput="updateRowValue('attck', ${i}, 'id', this.value)">
+                    <div class="flex gap-2">
+                        <input type="text" class="form-input text-xs" placeholder="技術" value="${item.name}" oninput="updateRowValue('attck', ${i}, 'name', this.value)">
+                        <button onclick="removeRow('attck', ${i})" class="text-red-300">✕</button>
+                    </div>
+                </div>
+            `).join('');
+
+            document.getElementById('refLinkContainer').innerHTML = refLinks.map((item, i) => `
+                <div class="flex gap-2 mb-2">
+                    <input type="text" class="form-input text-xs" placeholder="URL" value="${item.url}" oninput="updateRowValue('refLink', ${i}, 'url', this.value)">
+                    <button onclick="removeRow('refLink', ${i})" class="text-red-300 px-2">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function generateMarkdown() {
+            const mainT = document.getElementById('coverMainTitle').value;
+            const subT = document.getElementById('coverSubTitle').value;
+            const repT = document.getElementById('reportTitle').value;
+            const tlpVal = document.getElementById('h-tlp')?.value || 'Green';
+            
+            let md = `<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=JetBrains+Mono:wght@500&display=swap');
+body { margin: 0; padding: 0; background-color: #ffffff; }
+#cover-page { height: 98vh; display: flex; flex-direction: column; justify-content: center; align-items: center; background-color: #ffffff; color: #1a1a1a; font-family: 'Inter', "Microsoft JhengHei", sans-serif; position: relative; border: 20px solid #f8f9fa; }
+.top-bar { position: absolute; top: 0; width: 100%; height: 8px; background: linear-gradient(90deg, #003366 0%, #d90429 100%); }
+.title-box h1 { font-size: 72px; font-weight: 900; margin: 0; color: #001d3d; letter-spacing: -1px; line-height: 1; }
+.title-box h2 { font-family: 'JetBrains Mono', monospace; font-size: 24px; margin: 15px 0 40px 0; color: #d90429; text-transform: uppercase; letter-spacing: 4px; font-weight: 700; }
+.tlp-label { position: absolute; bottom: 50px; padding: 4px 12px; border: 2px solid ${getTlpColor(tlpVal)}; color: ${getTlpColor(tlpVal)}; font-weight: bold; font-size: 12px; border-radius: 4px; }
+.page-break { page-break-after: always; }
+</style>
+
+<div id="cover-page">
+    <div class="top-bar"></div>
+    <div class="title-box">
+        <h1>${mainT}</h1>
+        <h2>${subT}</h2>
+    </div>
+    <div class="tlp-label">TLP:${tlpVal.toUpperCase()}</div>
+</div>
+
+<div class="page-break"></div>
+
+# ${repT}
+
+| 欄位 | 內容 |
+|------|------|
+`;
+            headerConfigs[currentMode].forEach(f => {
+                const val = document.getElementById(`h-${f.id}`)?.value || '-';
+                md += `| ${f.label} | ${val} |\n`;
+            });
+            md += "\n";
+
+            const abstract = document.getElementById('abstract').value;
+            if (abstract) md += `# 摘要\n\n${abstract}\n\n`;
+
+            if (flows.some(f => f.action)) {
+                md += `# 攻擊流程\n\n| 階段 | 行為 | 說明 |\n|---|---|---|\n`;
+                flows.forEach(f => {
+                    if (f.action) md += `| ${f.stage || '-'} | ${f.action} | ${f.desc || '-'} |\n`;
+                });
+                md += "\n";
+            }
+
+            const analysis = document.getElementById('analysis').value;
+            if (analysis) md += `# 技術分析\n\n${analysis}\n\n`;
+
+            const rules = document.getElementById('detectionRules').value;
+            if (rules) md += `# 偵測規則\n\n\`\`\`\n${rules}\n\`\`\`\n\n`;
+
+            if (attcks.some(a => a.id)) {
+                md += `# 附錄\n\n## MITRE ATT&CK\n\n| ID | 技術名稱 | 說明 |\n|---|---|---|\n`;
+                attcks.forEach(a => {
+                    if (a.id) md += `| ${a.id} | ${a.name || '-'} | - |\n`;
+                });
+                md += "\n";
+            }
+
+            if (fileIocs.some(i => i.name) || netIocs.some(n => n.value)) {
+                md += `## IOCs\n\n`;
+                if (fileIocs.some(i => i.name)) {
+                    md += `| 檔案名稱 | SHA256 |\n|---|---|\n`;
+                    fileIocs.forEach(i => {
+                        if (i.name) md += `| ${i.name} | ${i.hash || '-'} |\n`;
+                    });
+                    md += "\n";
+                }
+                if (netIocs.some(n => n.value)) {
+                    md += `| Indicator |\n|---|\n`;
+                    netIocs.forEach(n => {
+                        if (n.value) md += `| ${n.value} |\n`;
+                    });
+                    md += "\n";
+                }
+            }
+
+            if (refLinks.some(r => r.url)) {
+                md += `## Reference\n\n`;
+                refLinks.forEach(r => {
+                    if (r.url) md += `- ${r.url}\n`;
+                });
+                md += "\n";
+            }
+
+            return md;
+        }
+
+        function getTlpColor(tlp) {
+            const colors = { White: '#cccccc', Green: '#00b050', Amber: '#ffbf00', Red: '#ff0000' };
+            return colors[tlp] || '#00b050';
+        }
+
+        function updateAll() {
+            const md = generateMarkdown();
+            const previewContainer = document.getElementById('fullPreview');
+            
+            const mainT = document.getElementById('coverMainTitle').value;
+            const subT = document.getElementById('coverSubTitle').value;
+            const repT = document.getElementById('reportTitle').value;
+            const tlpVal = document.getElementById('h-tlp')?.value || 'Green';
+
+            let previewHtml = `
+                <div class="preview-cover shadow-inner mb-8">
+                    <div class="preview-cover-top"></div>
+                    <div class="mt-8">
+                        <h3 class="text-4xl font-black text-slate-800 m-0">${mainT}</h3>
+                        <p class="font-mono text-sm text-red-600 tracking-widest mt-2 uppercase">${subT}</p>
+                    </div>
+                    <div class="mt-20 py-1 px-3 border-2 inline-block font-bold text-[10px]" style="border-color:${getTlpColor(tlpVal)}; color:${getTlpColor(tlpVal)}">
+                        TLP:${tlpVal.toUpperCase()}
+                    </div>
+                </div>
+                <hr class="my-8">
+                <h1 class="text-2xl font-bold border-b-2 pb-2 mb-4">${repT || '報告標題'}</h1>
+            `;
+
+            // Simple table/text rendering for preview
+            const sections = md.split('\n\n');
+            sections.forEach(part => {
+                if (part.startsWith('<style') || part.startsWith('<div id="cover')) return;
+                if (part.startsWith('|')) {
+                    const rows = part.trim().split('\n');
+                    let table = '<table class="w-full border-collapse border border-slate-200 text-[10px] my-2">';
+                    rows.forEach((row, idx) => {
+                        if (row.includes('---')) return;
+                        const cols = row.split('|').filter(c => c.trim() !== '');
+                        table += `<tr class="${idx === 0 ? 'bg-slate-50 font-bold' : ''}">`;
+                        cols.forEach(col => table += `<td class="border border-slate-200 p-1.5">${col}</td>`);
+                        table += '</tr>';
+                    });
+                    table += '</table>';
+                    previewHtml += table;
+                } else if (part.startsWith('# ')) {
+                    previewHtml += `<h2 class="text-lg font-bold border-b mt-6 mb-2 text-slate-800">${part.substring(2)}</h2>`;
+                } else if (part.startsWith('## ')) {
+                    previewHtml += `<h3 class="text-md font-bold mt-4 mb-2 text-slate-700">${part.substring(3)}</h3>`;
+                } else if (part.startsWith('```')) {
+                    previewHtml += `<pre class="bg-slate-800 text-blue-200 p-3 rounded text-[10px] font-mono overflow-x-auto my-2">${part.replace(/```/g, '')}</pre>`;
+                } else if (part.trim()) {
+                    previewHtml += `<p class="text-xs text-slate-600 my-2 leading-relaxed">${part}</p>`;
+                }
+            });
+
+            previewContainer.innerHTML = previewHtml;
+            window.lastMd = md;
+        }
+
+        function copyToClipboard() {
+            const el = document.createElement('textarea');
+            el.value = window.lastMd;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            const toast = document.getElementById('copyToast');
+            toast.style.opacity = '1';
+            setTimeout(() => toast.style.opacity = '0', 3000);
+        }
+
+        window.onload = () => {
+            lucide.createIcons();
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}.${String(now.getMonth() + 1).padStart(2, '0')}.${String(now.getDate()).padStart(2, '0')}`;
+            headerConfigs.ransomware[2].value = dateStr;
+            headerConfigs.general[2].value = dateStr;
+            
+            document.getElementById('reportTitle').value = "COLDLOCK 勒索軟體針對台灣科技和能源業進行攻擊";
+            document.getElementById('abstract').value = "本報告揭露一起透過 COLDLOCK .NET 勒索軟體以台灣石油天然氣產業為目標的攻擊事件。";
+            document.getElementById('analysis').value = "COLDLOCK 是一個 .NET 撰寫的勒索軟體，會枚舉 %SYSTEMDRIVE% 中的特定資料夾並進行加密。";
+            
+            renderHeaderFields();
+            renderDynamicLists();
+            
+            ['abstract', 'analysis', 'detectionRules', 'coverMainTitle', 'coverSubTitle', 'reportTitle'].forEach(id => {
+                document.getElementById(id).addEventListener('input', updateAll);
+            });
+        };
+    </script>
+</body>
+</html>
